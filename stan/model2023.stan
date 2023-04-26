@@ -46,14 +46,14 @@ data {
   array[y6_n, n_parties] real y6_values;
   array[y6_n] int y6_days;
   array[n_parties] real y6_se;
-  //vector[y6_n] reid_method;
+  vector[y6_n] reid_method;
 }
 parameters {
   array[sum(n_days)] vector[n_parties] epsilon; // innovations in underlying state of vote intention
   corr_matrix[n_parties] omega;
   array[n_parties] real<lower=0> sigma; // standard deviations for daily innovations for each party
   array[n_pollsters, n_parties] real d; // house effects for n_pollsters and n_parties combinations
-  //array[n_parties] real reid_impact; // impact on party 5 (Reid Research) of the change in Reid's method in 2017
+  array[n_parties] real reid_impact; // impact on party 5 (Reid Research) of the change in Reid's method in 2017
 }
 transformed parameters {
   array[sum(n_days), n_parties] real mu; // underlying state of vote intention, as a proportion (not percentage)
@@ -73,7 +73,7 @@ model {
   sigma ~ normal(0.002, 0.001);
 
   // prior for the effect of Reid Research's changed method in 2017
- // reid_impact ~ normal(zeroes, 0.02); // fairly tight prior because it's not plausibly  more than 10% change for a party
+  reid_impact ~ normal(zeroes, 0.02); // fairly tight prior because it's not plausibly  more than 10% change for a party
 
   // prior for correlation matrix of innovations, on standardised scale (so SD = 1)
   omega ~ lkj_corr(1); // LKJ prior on the correlation matrix
@@ -112,8 +112,8 @@ model {
     y5_values[ : , j] ~ normal(to_vector(mu[y5_days, j]) + d[5, j],
                                y5_se[j] * inflator);
 
-    y6_values[ : , j] ~ normal(to_vector(mu[y6_days, j]) + d[6, j],
-                               //+ reid_impact[j] * reid_method,
+    y6_values[ : , j] ~ normal(to_vector(mu[y6_days, j]) + d[6, j]
+                               + reid_impact[j] * reid_method,
                                y6_se[j] * inflator);
   }
 }
