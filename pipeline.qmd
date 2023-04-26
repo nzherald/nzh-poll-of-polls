@@ -141,15 +141,14 @@ list(
 
 ```{targets prep}
 list(
-  tar_target(ThisElection, "2023-10-14"),
-  tar_target(election_dates, as.Date(
-    c("2014-09-20", "2017-09-23", "2020-10-17", ThisElection)
-  )),
-  tar_target(days_between_elections, as.integer(diff(election_dates)) + 1),
+  tar_target(election_weeks, floor_date(ymd(
+    c("2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14")
+  ), unit = 'week')),
+  tar_target(weeks_between_elections, as.integer(diff(election_weeks)) / 7),
   tar_target(
     elections,
     results |>
-      filter(Election >= 2014) |>
+      filter(Election >= year(min(election_weeks))) |>
       mutate(
         Party = fct_other(Party, keep = parties$Party) |>
           fct_relevel(parties$Party)
@@ -164,6 +163,7 @@ list(
     polls |>
   filter(Pollster %in% c(pollsters$Pollster), !is.na(MidPoint)) |>
   mutate(
+    MidPoint = floor_date(MidPoint, unit = 'week'),
     Party = fct_other(Party, keep = parties$Party) |>
       fct_relevel(parties$Party)
   ) |>
@@ -179,7 +179,7 @@ list(
     wt = VotingIntention,
     name = "VotingIntention"
   ) |>
-  filter(ElectionYear %in% year(election_dates[-1])) |>
+  filter(ElectionYear %in% year(election_weeks[-1])) |>
   arrange(Party, MidDate) |>
   pivot_wider(
     names_from = Party,
@@ -187,9 +187,8 @@ list(
     names_sort = TRUE,
     values_fill = 0
   ) |>
-  # days since the first election in our model:
   mutate(Other = max(0, 1 - Polled),
-         MidDateNumber = 1 + as.numeric(MidDate - election_dates[1])) |> 
+         MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
   select(-Polled)
 
   ),
@@ -226,39 +225,39 @@ list(
            mu_elect3 = as.numeric(elections[3, ]), 
 
            n_parties = length(parties_ss),
-           n_days = days_between_elections, 
+           n_weeks = weeks_between_elections, 
            # multiply the variance of all polls by 2.  See my blog post of 9 July 2017.
            inflator = sqrt(2),
            
            y1_n = nrow(polls3[[1]]),
            y1_values = polls3[[1]][ , 4:11],
-           y1_days = as.numeric(polls3[[1]]$MidDateNumber),
+           y1_weeks = as.numeric(polls3[[1]]$MidDateNumber),
            y1_se = ses3[[1]]$se,
            
            y2_n = nrow(polls3[[2]]),
            y2_values = polls3[[2]][ , 4:11],
-           y2_days = as.numeric(polls3[[2]]$MidDateNumber),
+           y2_weeks = as.numeric(polls3[[2]]$MidDateNumber),
            y2_se = ses3[[2]]$se,
            
            y3_n = nrow(polls3[[3]]),
            y3_values = polls3[[3]][ , 4:11],
-           y3_days = as.numeric(polls3[[3]]$MidDateNumber),
+           y3_weeks = as.numeric(polls3[[3]]$MidDateNumber),
            y3_se = ses3[[3]]$se,
            
            y4_n = nrow(polls3[[4]]),
            y4_values = polls3[[4]][ , 4:11],
-           y4_days = as.numeric(polls3[[4]]$MidDateNumber),
+           y4_weeks = as.numeric(polls3[[4]]$MidDateNumber),
            y4_se = ses3[[4]]$se,
            
            y5_n = nrow(polls3[[5]]),
            y5_values = polls3[[5]][ , 4:11],
-           y5_days = as.numeric(polls3[[5]]$MidDateNumber),
+           y5_weeks = as.numeric(polls3[[5]]$MidDateNumber),
            y5_se = ses3[[5]]$se,
            # next row is a dummy variable specially for Reid Research's change in methodology:
            
            y6_n = nrow(polls3[[6]]),
            y6_values = polls3[[6]][ , 4:11],
-           y6_days = as.numeric(polls3[[6]]$MidDateNumber),
+           y6_weeks = as.numeric(polls3[[6]]$MidDateNumber),
            y6_se = ses3[[6]]$se,
            reid_method = as.numeric(polls3[[6]]$MidDate >= as.Date("2017-01-01")),
            
@@ -278,9 +277,8 @@ list(
     data = d1,
     chains = 4,
     parallel_chains = 4,
-    iter_warmup = 50,
-    iter_sampling = 20,
-    max_treedepth = 10,
+    iter_sampling = 2000,
+    max_treedepth = 20,
     deployment = "worker"
   )
 )
