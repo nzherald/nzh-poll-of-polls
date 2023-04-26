@@ -188,7 +188,7 @@ list(
     names_sort = TRUE,
     values_fill = 0
   ) |>
-  mutate(Other = max(0, 1 - Polled),
+  mutate(Other = pmax(0, 1 - Polled),
          MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
   select(-Polled)
 
@@ -292,7 +292,9 @@ list(
   tar_target(
     polls22020,
     polls |>
-  filter(Pollster %in% c(pollsters2020$Pollster), !is.na(MidPoint)) |>
+      filter(Election %in% c(2014, 2017, 2020),
+             Pollster %in% c(pollsters2020$Pollster),
+             !is.na(MidPoint)) |>
   mutate(
     MidPoint = floor_date(MidPoint, unit = 'week'),
     Party = fct_other(Party, keep = parties2020$Party) |>
@@ -310,7 +312,7 @@ list(
     wt = VotingIntention,
     name = "VotingIntention"
   ) |>
-  filter(ElectionYear %in% year(election_weeks2020[-1])) |>
+  filter(MidDate <= election_weeks2020[4]) |>
   arrange(Party, MidDate) |>
   pivot_wider(
     names_from = Party,
@@ -318,7 +320,7 @@ list(
     names_sort = TRUE,
     values_fill = 0
   ) |>
-  mutate(Other = max(0, 1 - Polled),
+  mutate(Other = pmax(0, 1 - Polled),
          MidDateNumber = 1 + as.numeric(MidDate - election_weeks2020[1]) / 7) |> 
   select(-Polled)
 

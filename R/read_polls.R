@@ -23,11 +23,12 @@ wikipedia_date_parser_from <- function(date_text) {
   date_text |> purrr::map(
     ~ case_when(
       . == '2–7, 14–15 Mar 2022' ~ ymd('2022-02-15'),
+      . == '31 Sep – 11 Oct 2015' ~ ymd('2015-09-30'), # Assume it is supposed to be 30 Sep
       grepl('–', .) ~ str_split_1(., '–') |>
         str_trim() |>
         .extract_date_from(),
-      grepl(glue('^{.months} 20\\d\\d$'), .) ~ my(., quiet = T),
-      TRUE ~ NA_Date_
+      #grepl(glue('^{.months} 20\\d\\d$'), .) ~ my(.),
+      TRUE ~ coalesce(dmy(., quiet = T), my(., quiet = T))
     )
   ) |> purrr::reduce(c)
 }
@@ -36,12 +37,13 @@ wikipedia_date_parser_to  <- function(date_text) {
   date_text |> purrr::map(
     ~ case_when(
       . == '2–7, 14–15 Mar 2022' ~ ymd('2022-03-15'),
+      . == '31 Sep – 11 Oct 2015' ~ ymd('2015-10-11'),
       grepl('–', .) ~ str_split_1(., '–') |>
         str_trim() |>
         last() |>
         dmy(quiet = T),
-      grepl(glue('^{.months} 20\\d\\d$'), .) ~ my(., quiet = T) + months(1) - days(1),
-      TRUE ~ NA_Date_
+      !is.na(my(., quiet = T)) ~ my(., quiet = T) + months(1) - days(1),
+      TRUE ~ dmy(., quiet = T)
     )
   ) |> purrr::reduce(c)
 }
@@ -59,9 +61,9 @@ extract_poll_results <-
                     !grepl('Polling organisation|election result|^Poll$',
                {{ pollster_col }})) |>
       mutate(From = wikipedia_date_parser_from(
-        {{ date_col }}),
+        str_remove_all({{ date_col }}, "\\[.*\\]")),
       To = wikipedia_date_parser_to(
-        {{ date_col }}),
+        str_remove_all({{ date_col }}, "\\[.*\\]")),
       MidPoint = From + (To - From)/2) |>
       rename(`Date range` = {{ date_col }}) |>
       rename(`Polling organisation` = {{pollster_col}}) |>
