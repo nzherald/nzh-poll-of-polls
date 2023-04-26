@@ -1,0 +1,9 @@
+---
+author: "Chris Knox"
+date: "`r Sys.Date()`"
+---
+
+This is a website to summarise the NZ Herald Poll of Polls for the
+2023 election.
+
+Currently it is largely a reproduction of Peter Ellis' model for 2020.

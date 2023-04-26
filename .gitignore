@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/.quarto/
+_targets*
+_site
+*_files
+stan/model2023
+.stan

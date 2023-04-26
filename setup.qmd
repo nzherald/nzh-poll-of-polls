@@ -1,0 +1,20 @@
+---
+title: Setup
+---
+
+Installing `renv` and running `renv::restore()` should provide you with an 
+environment suitable for running this model.
+
+```{r}
+#| eval: false
+install.packages('renv')
+renv::restore()
+```
+
+You may also need to install `cmdstan`
+
+```{r}
+#| eval: false
+cmdstanr::install_cmdstan()
+```
+
