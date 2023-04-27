@@ -4,7 +4,7 @@
 .Ruserdata
 
 /.quarto/
-_targets*
+_targets
 _site
 *_files
 stan/model2023
