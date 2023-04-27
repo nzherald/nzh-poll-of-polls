@@ -106,20 +106,9 @@ list(
            y4_values = polls3[[4]][ , 4:11],
            y4_weeks = as.numeric(polls3[[4]]$MidDateNumber),
            y4_se = ses3[[4]]$se,
+           reid_method = as.numeric(polls3[[4]]$MidDate >= as.Date("2017-01-01")),
            
-           y5_n = nrow(polls3[[5]]),
-           y5_values = polls3[[5]][ , 4:11],
-           y5_weeks = as.numeric(polls3[[5]]$MidDateNumber),
-           y5_se = ses3[[5]]$se,
-           # next row is a dummy variable specially for Reid Research's change in methodology:
-           
-           y6_n = nrow(polls3[[6]]),
-           y6_values = polls3[[6]][ , 4:11],
-           y6_weeks = as.numeric(polls3[[6]]$MidDateNumber),
-           y6_se = ses3[[6]]$se,
-           reid_method = as.numeric(polls3[[6]]$MidDate >= as.Date("2017-01-01")),
-           
-           n_pollsters = 6)
+           n_pollsters = 4)
   )
 )
 

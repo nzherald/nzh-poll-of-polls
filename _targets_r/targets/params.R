@@ -1,7 +1,8 @@
 list(
   tar_target(pollsters, polls |> 
                filter(Election == 2023) |> 
-               distinct(Pollster)),
+               distinct(Pollster) |> 
+               filter(!grepl('Roy|Horizon', Pollster))),
   tar_target(parties_in_parliament, 
              tibble(Party = c('ACT', 'Green', 'Labour', 'National', 'Te Pāti Māori'))),
   tar_target(parties,  polls |> 

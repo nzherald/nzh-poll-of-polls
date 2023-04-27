@@ -36,17 +36,7 @@ data {
   array[y4_n, n_parties] real y4_values;
   array[y4_n] int y4_weeks;
   array[n_parties] real y4_se;
-
-  int y5_n;
-  array[y5_n, n_parties] real y5_values;
-  array[y5_n] int y5_weeks;
-  array[n_parties] real y5_se;
-
-  int y6_n;
-  array[y6_n, n_parties] real y6_values;
-  array[y6_n] int y6_weeks;
-  array[n_parties] real y6_se;
-  vector[y6_n] reid_method;
+  vector[y4_n] reid_method;
 }
 parameters {
   array[sum(n_weeks)] vector[n_parties] epsilon; // innovations in underlying state of vote intention
@@ -106,14 +96,9 @@ model {
     y3_values[ : , j] ~ normal(to_vector(mu[y3_weeks, j]) + d[3, j],
                                y3_se[j] * inflator);
 
-    y4_values[ : , j] ~ normal(to_vector(mu[y4_weeks, j]) + d[4, j],
+    y4_values[ : , j] ~ normal(to_vector(mu[y4_weeks, j]) + d[4, j]
+                              + reid_impact[j] * reid_method,
                                y4_se[j] * inflator);
 
-    y5_values[ : , j] ~ normal(to_vector(mu[y5_weeks, j]) + d[5, j],
-                               y5_se[j] * inflator);
-
-    y6_values[ : , j] ~ normal(to_vector(mu[y6_weeks, j]) + d[6, j]
-                               + reid_impact[j] * reid_method,
-                               y6_se[j] * inflator);
   }
 }
