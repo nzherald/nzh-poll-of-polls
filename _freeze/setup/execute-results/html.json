@@ -1,0 +1,14 @@
+{
+  "hash": "fd9e8296f5cad09d896f535ae13b1bd5",
+  "result": {
+    "markdown": "---\ntitle: Setup\n---\n\n\nYou will need to have a running R environment - R can be downloaded for \nLinux, Mac, and Windows from [here](https://cran.r-project.org/).\n\nWe use [renv](https://rstudio.github.io/renv/index.html) to manage package \ndependencies. Installing `renv` and running `renv::restore()` should provide you with an \nenvironment suitable for running this model.\n\n\n::: {.cell}\n\n```{.r .cell-code}\ninstall.packages('renv')\nrenv::restore()\n```\n:::\n\n\nWe use the [targets](https://docs.ropensci.org/targets/) package to manage the \ncomputational pipeline. Targets essentially ensures that computations are\nonly repeated when downstream dependencies or code are changed. \nFor an introduction take a look at the [targets manual](https://books.ropensci.org/targets/)\n\nYou may also need to install `cmdstan` - it will be installed via\n`renv::restore` but there it needs an additional step to install the \ntoolchain.\n\n\n::: {.cell}\n\n```{.r .cell-code}\ncmdstanr::install_cmdstan()\n```\n:::\n\n\nOnce `cmdstan` is installed you can run the pipeline\n\n```r\nlibrary(targets)\ntar_make()\n```\n\nThis will take 15 or so minutes - the modelling portion will spit out a lot of warnings.\n\nWhen the pipeline is complete you can load individual _targets_ using `tar_load()`, e.g.\n\n```r\ntar_load(polls)\ntar_load(model2023_summary_model2023)\n```\n\nAll the targets are defined on the [pipeline page](pipeline.qmd).\n\nWe also make use of the [stantargets](https://docs.ropensci.org/stantargets/index.html). \nThe [`tar_stan_mcmc` function](https://docs.ropensci.org/stantargets/reference/tar_stan_mcmc.html)\ncreates a few different automatically named targets - including `model2023_summary_model2023`.\n\n\n\n\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

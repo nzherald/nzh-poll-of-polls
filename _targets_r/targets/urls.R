@@ -1,4 +1,4 @@
-skip_url_check <- TRUE
+skip_url_check <- FALSE
 list(
   tar_url(polls2011_url, wikipedia_poll_url(2011), cue = tar_cue_skip(skip_url_check)),
   tar_url(polls2014_url, wikipedia_poll_url(2014), cue = tar_cue_skip(skip_url_check)),

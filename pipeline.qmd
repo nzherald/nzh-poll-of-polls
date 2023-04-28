@@ -80,7 +80,7 @@ that minor changes to the page do not trigger a model re-run.
 The code to generate the urls is defined in [R/urls.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/urls.R)
 
 ```{targets urls}
-skip_url_check <- TRUE
+skip_url_check <- FALSE
 list(
   tar_url(polls2011_url, wikipedia_poll_url(2011), cue = tar_cue_skip(skip_url_check)),
   tar_url(polls2014_url, wikipedia_poll_url(2014), cue = tar_cue_skip(skip_url_check)),
