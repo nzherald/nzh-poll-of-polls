@@ -570,6 +570,10 @@ Assumption is hard-coded that parties that currently have an electorate seat wil
 keep at least one and no additional parties will pick up an electorate seat. 
 Future work will make this more flexible.
 
+We render an mobile screen sized plot and the desktop sized plot and load these 
+as SVGs - slightly clunky but is actually a good way to display ggplot2 images
+on the web.
+
 ```{targets seats}
 simulate_seats <- function(sims) {
   t(sapply(1:nrow(sims), function(i) {
