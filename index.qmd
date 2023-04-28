@@ -3,7 +3,103 @@ author: "Chris Knox"
 date: "`r Sys.Date()`"
 ---
 
-This is a website to summarise the NZ Herald Poll of Polls for the
-2023 election.
+This site summarises the NZ Herald _Poll of Polls_ for the
+2023 election. The source code is on [GitHub](https://github.com/nzherald/nzh-poll-of-polls).
 
-Currently it is largely a reproduction of Peter Ellis' model for 2020.
+The _Poll of Polls_ is a Bayesian state space model primarily based on a 
+[model](https://github.com/ellisp/nz-election-forecast)
+developed by [Peter Ellis](http://freerangestats.info/about/)
+for the 2017 and 2020 New Zealand elections.
+
+## Articles
+
+Articles that have been published based on the _Poll of Polls_ include:
+
+- [Friday, 28 April](https://www.nzherald.co.nz/nz/politics/heralds-poll-of-polls-shows-incredibly-tight-election/SUS2IVFEVVHKVLRXWD6EDTWDUU/)
+
+These articles are behind the Herald's premium paywall.
+Good journalism and good data journalism costs money. 
+This site and all the
+source code associated with the model have been released under a 
+[GPL3 license](license.html)
+
+## Quick start
+
+More details are available on the [setup](setup.qmd) page.
+You will need to have a working [R](https://cran.r-project.org/) environment.
+
+```r
+# install.packages('renv') # if you don't already have renv
+renv::restore()
+cmdstanr::install_cmdstan()
+targets::tar_make()
+```
+
+Running the model will take 15 or so minutes. Once it is complete you can
+load the model summary object with
+
+```r
+targets::tar_load(model2023_summary_model2023)
+```
+
+## Overview
+
+This model is largely a reproduction of Peter Ellis' model for 2017/2020. Peter
+has written about the development of the model 
+[here](http://freerangestats.info/elections/nz-2020/index.html),
+[here](http://freerangestats.info/blog/2020/06/06/nz-2020-forecasts),
+[here](http://freerangestats.info/blog/2017/09/16/time-varying-house-effects),
+and [here](http://freerangestats.info/elections/state-space.html).
+
+Peter's model is based on an approach outlined in a 
+2005 paper by Simon Jackman: 
+[Pooling the Polls Over and Election Campaign](https://www.tandfonline.com/doi/abs/10.1080/10361140500302472) -
+currently a copy is available [here](https://uh.edu/hobby/eitm/_docs/past-lectures/2015-Lectures/Harold-Clarke/Pooling-the-Polls-Over-an-Election-Campaign.pdf)
+
+The approach assumes that at any given time there is a latent voting intention
+that is imperfectly and irregularly measured by polls and well measured once 
+every three years during an election.
+
+This model works exactly the same as Peter's model with three modifications:
+
+- Voting intention is calculated weekly instead of daily
+- Polls are only used if the polling organisation has signed up the [NZ Political Polling Code](https://www.researchassociation.org.nz/political-polling)
+- [Non-polling priors](http://freerangestats.info/blog/2020/06/06/nz-2020-forecasts) have been removed
+
+One of the less satisfying aspects of this modelling approach is that voting
+intention evolves over time as a random walk. While this is unlikely to be _true_
+it works well enough. But it would be good to be able to constrain the way 
+voting intention evolves in a politically sensible manner. Peter was able to
+do this in 2020 by looking at historical swings away and towards the government.
+With the recent change in Prime Minister we decided this approach wasn't
+applicable. However, we are open to suggestions :)
+
+## Similar work
+
+Bayesian state space models have, and are, used to model and forecast the 
+[Swedish](https://www.youtube.com/watch?v=Dtk5ghFmhz8) and
+[German](https://wer-gewinnt-die-wahl.de/en/) parliamentary elections.
+
+
+## Feedback and improvements
+
+If you have any (non-politicised) feedback and suggestions of how the model could
+be improved please create an issue or email [Chris Knox](mailto:chris.knox@nzme.co.nz).
+
+## Acknowledgements
+
+We are enormously grateful to Peter Ellis for both developing his model and making
+it available for use.
+
+None of this would be possible without the [R](https://cran.r-project.org/)
+and [Stan](https://mc-stan.org/) programming languages and their communities of
+open source developers.
+
+## License
+
+All source code in this repository is available under a [GPL3 license](license.html)
+
+Portions of the source code are _very_ heavily based on Peter's original code 
+which was also released under a GPL3 license.
+
+

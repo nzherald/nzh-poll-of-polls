@@ -2,7 +2,11 @@
 title: Setup
 ---
 
-Installing `renv` and running `renv::restore()` should provide you with an 
+You will need to have a running R environment - R can be downloaded for 
+Linux, Mac, and Windows from [here](https://cran.r-project.org/).
+
+We use [renv](https://rstudio.github.io/renv/index.html) to manage package 
+dependencies. Installing `renv` and running `renv::restore()` should provide you with an 
 environment suitable for running this model.
 
 ```{r}
@@ -11,10 +15,43 @@ install.packages('renv')
 renv::restore()
 ```
 
-You may also need to install `cmdstan`
+We use the [targets](https://docs.ropensci.org/targets/) package to manage the 
+computational pipeline. Targets essentially ensures that computations are
+only repeated when downstream dependencies or code are changed. 
+For an introduction take a look at the [targets manual](https://books.ropensci.org/targets/)
+
+You may also need to install `cmdstan` - it will be installed via
+`renv::restore` but there it needs an additional step to install the 
+toolchain.
 
 ```{r}
 #| eval: false
 cmdstanr::install_cmdstan()
 ```
+
+Once `cmdstan` is installed you can run the pipeline
+
+```r
+library(targets)
+tar_make()
+```
+
+This will take 15 or so minutes - the modelling portion will spit out a lot of warnings.
+
+When the pipeline is complete you can load individual _targets_ using `tar_load()`, e.g.
+
+```r
+tar_load(polls)
+tar_load(model2023_summary_model2023)
+```
+
+All the targets are defined on the [pipeline page](pipeline.qmd).
+
+We also make use of the [stantargets](https://docs.ropensci.org/stantargets/index.html). 
+The [`tar_stan_mcmc` function](https://docs.ropensci.org/stantargets/reference/tar_stan_mcmc.html)
+creates a few different automatically named targets - including `model2023_summary_model2023`.
+
+
+
+
 

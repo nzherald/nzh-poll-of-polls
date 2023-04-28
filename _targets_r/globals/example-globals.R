@@ -11,5 +11,11 @@ tar_option_set(packages = c(
   "dplyr",
   "stringr",
   "lubridate",
-  "forcats"
+  "forcats",
+  "ggplot2",
+  "svglite",
+  "scales",
+  "janitor",
+  "ggthemes",
+  "nzelect"
 ))

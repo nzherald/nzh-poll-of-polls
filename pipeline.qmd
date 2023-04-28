@@ -18,19 +18,15 @@ the code pipeline used for running the model.
 
 See [setup](setup.qmd) for more info.
 
-In addition to the targets package itself we make use of two targets-related
-packages: [tarchetypes](https://docs.ropensci.org/tarchetypes/index.html) and
-[stantargets](https://docs.ropensci.org/stantargets/index.html).
-
-```{r}
-library(targets)
-library(tarchetypes)
-library(stantargets)
-```
-
 ## Globals
 
-We first define some global options/functions common to all targets. The function below plots a histogram of ozone concentrations, and our histogram target will need it.
+We first define some global options/functions common to all targets. The list of
+packages loaded below are what targets needs to run the pipeline - along with
+the targets package itself and two additional targets-related
+packages: [tarchetypes](https://docs.ropensci.org/tarchetypes/index.html) and
+[stantargets](https://docs.ropensci.org/stantargets/index.html). If you don't 
+want to use renv then manually installing these should be sufficient.
+
 
 ```{targets example-globals, tar_globals = TRUE}
 library(targets)
@@ -46,29 +42,66 @@ tar_option_set(packages = c(
   "dplyr",
   "stringr",
   "lubridate",
-  "forcats"
+  "forcats",
+  "ggplot2",
+  "svglite",
+  "scales",
+  "janitor",
+  "ggthemes",
+  "nzelect"
 ))
 ```
 
 ## Targets
 
+The canonical location for NZ polling data appears to be Wikipedia pages.
+The first part of this pipeline downloads the poll results from the Wikipedia pages.
+It also fetches recent election results from the electoral commission.
+
+Once the poll results have been downloaded they are filtered and marshalled into the
+format need by the model. 
+
+The model is then run and a few charts are generated from the model results.
+
+### URLs
+
+Tarchetypes has a useful [function `tar_url`](https://docs.ropensci.org/tarchetypes/reference/tar_formats.html)
+for working with urls. When the pipeline is run it will check the `last-modified`
+header with the remote site. If this has changed any targets that depend on the
+url will be run again. Checking the URL is a little slow for regular development
+so [tar_cue_skip](https://docs.ropensci.org/tarchetypes/reference/tar_cue_skip.html)
+can be used to skip the check - just set `skip_url_check` below to `TRUE`.
+
+Note that often this results in one of the poll objects being extracted again but
+no further dependencies are run as the resulting data has not changed. This ensures
+that minor changes to the page do not trigger a model re-run. 
+
+The code to generate the urls is defined in [R/urls.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/urls.R)
 
 ```{targets urls}
+skip_url_check <- FALSE
 list(
-  tar_url(polls2011_url, wikipedia_poll_url(2011)),
-  tar_url(polls2014_url, wikipedia_poll_url(2014)),
-  tar_url(polls2017_url, wikipedia_poll_url(2017)),
-  tar_url(polls2020_url, wikipedia_poll_url(2020)),
-  tar_url(polls2023_url, wikipedia_poll_url(2023)),
-  tar_url(results2008_url, election_results_summary(2008)),
-  tar_url(results2011_url, election_results_summary(2011)),
-  tar_url(results2014_url, election_results_summary(2014)),
-  tar_url(results2017_url, election_results_summary(2017)),
-  tar_url(results2020_url, election_results_summary(2020))
+  tar_url(polls2011_url, wikipedia_poll_url(2011), cue = tar_cue_skip(skip_url_check)),
+  tar_url(polls2014_url, wikipedia_poll_url(2014), cue = tar_cue_skip(skip_url_check)),
+  tar_url(polls2017_url, wikipedia_poll_url(2017), cue = tar_cue_skip(skip_url_check)),
+  tar_url(polls2020_url, wikipedia_poll_url(2020), cue = tar_cue_skip(skip_url_check)),
+  tar_url(polls2023_url, wikipedia_poll_url(2023), cue = tar_cue_skip(skip_url_check)),
+  tar_url(results2008_url, election_results_summary(2008), cue = tar_cue_skip(skip_url_check)),
+  tar_url(results2011_url, election_results_summary(2011), cue = tar_cue_skip(skip_url_check)),
+  tar_url(results2014_url, election_results_summary(2014), cue = tar_cue_skip(skip_url_check)),
+  tar_url(results2017_url, election_results_summary(2017), cue = tar_cue_skip(skip_url_check)),
+  tar_url(results2020_url, election_results_summary(2020), cue = tar_cue_skip(skip_url_check))
 )
 ```
 
 
+### Download polls
+
+Polling for each election is extracted into it's own object. Then all the
+objects are combined into a single consistent object.
+
+The code that does the heavy lifting is in
+[R/read-polls.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/read-polls.R)
 
 
 ```{targets polls}
@@ -81,6 +114,10 @@ list(
   tar_target(polls, combine_polls(polls2011,polls2014,polls2017,polls2020,polls2023))
 )
 ```
+
+The electoral commission produces usually formatted csv files - the code in 
+[R/fetch-results.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/fetch-results.R)
+reads just a small portion of the results file.
 
 ```{targets results}
 list(
@@ -105,9 +142,8 @@ list(
 
 ### Selecting parties and pollsters
 
-Only include pollsters who have provided a poll for the 2023 election. (Not sure
-how the model will handle only having Curia polls after the 2020 election - may
-need to remove it and consider adding leaked Curia polls - or talking to Curia.)
+Only include pollsters who have provided a poll for the 2023 election and who
+use the NZ Political Polling Code.
 
 Include parties who currently have a seat in parliament or who have polled over
 2.5% three times.
@@ -137,15 +173,31 @@ list(
                filter(n() > 3, .by=Party) |> 
                distinct(Party) |> 
                union(parties_in_parliament2020) |> 
-               arrange(Party))
+               arrange(Party)),
+  tar_target(party_colours,
+             tribble(
+               ~Party, ~Colour,
+               "ACT", "#ffd100",
+               "Green", "#00491E",
+               "Labour", "#d82c20",
+               "Te Pāti Māori", "#D12C38",
+               "National", "#065BAA",
+               "NZ First", "#212529",
+               "TOP", "#09B598",
+               "Other", "#B3B3B3"
+             ) |> mutate(Party = as_factor(Party)))
 )
 ```
 
+### Marshal the data
+
+This code is very similar to Peter Ellis' code for marshalling polls and results
+into a object for stan.
+
 ```{targets prep}
 list(
-  tar_target(election_weeks, floor_date(ymd(
-    c("2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14")
-  ), unit = 'week')),
+  tar_target(election_dates, ymd(c("2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14"))),
+  tar_target(election_weeks, floor_date(election_dates, unit = 'week')),
   tar_target(weeks_between_elections, as.integer(diff(election_weeks)) / 7),
   tar_target(
     elections,
@@ -172,14 +224,14 @@ list(
   filter(Party != 'Other') |> 
   mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |> 
   rename(MidDate = MidPoint, ElectionYear = Election) |>
-  count(
+  select(
+    `Date range`,
     Party,
     Pollster,
     MidDate,
     ElectionYear,
     Polled,
-    wt = VotingIntention,
-    name = "VotingIntention"
+    VotingIntention
   ) |>
   filter(ElectionYear %in% year(election_weeks[-1])) |>
   arrange(Party, MidDate) |>
@@ -191,9 +243,8 @@ list(
   ) |>
   mutate(Other = pmax(0, 1 - Polled),
          MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
-  select(-Polled)
-
-  ),
+  select(-Polled, -`Date range`)
+),
   tar_target(
     polls3,
     polls2 |>
@@ -258,6 +309,10 @@ list(
 
 ```
 
+### 2020 version of the model
+
+This is a bit of a nasty copy-paste from above - it runs a version of the model
+for the 2020 election that we can use to check how well the model performs.
 
 ```{targets prep2020}
 list(
@@ -374,6 +429,10 @@ list(
 
 ```
 
+### Run the models
+
+Uses `stantargets` to run the model - see
+[tar_stan_mcmc](https://docs.ropensci.org/stantargets/reference/tar_stan_mcmc.html)
 
 ```{targets modelling}
 list(
@@ -403,4 +462,70 @@ list(
 )
 ```
 
+### Charts
+
+#### Voting intention
+
+Current charts are more or less the same as some of Peter's charts. Future
+versions will export the data to create more interactive charts.
+
+```{targets charts}
+list(
+  tar_target(voting_intention_chartdata,
+             model2023_summary_model2023 |>
+      filter(str_starts(variable, "mu")) |>
+      mutate(
+        Party = rep(parties_ss, each = sum(weeks_between_elections)),
+        week = rep(1:sum(weeks_between_elections), length(parties_ss)),
+        week = min(election_weeks) + weeks(week)
+      )
+             ),
+  tar_target(
+    voting_intention_chart,
+     voting_intention_chartdata |>
+      ggplot(aes(
+        x = week,
+        y = mean,
+        colour = Party,
+        fill = Party
+      )) +
+      geom_point(
+        data = gather(
+          polls2,
+          Party,
+          VotingIntention,
+          -Pollster,
+          -MidDate,
+          -ElectionYear,
+          -MidDateNumber
+        ) |>
+          filter(VotingIntention != 0),
+        aes(x = MidDate, y = VotingIntention),
+        colour = "black",
+        size = 0.5
+      ) +
+      geom_vline(
+        xintercept = as.numeric(election_dates),
+        colour = "grey60"
+      ) +
+      scale_y_continuous(labels = percent) +
+      scale_x_date(breaks = ym(c('2016-01', '2018-01', '2020-01', '2022-01')), date_labels = '%Y') +
+      scale_fill_manual(values = party_colours$Colour, breaks = party_colours$Party) +
+      geom_line(
+        data = voting_intention_chartdata |> filter(week <= today()),
+        colour = "black"
+      ) +
+      geom_ribbon(aes(ymin = q5, ymax = q95), alpha = 0.3, colour = NA) +
+      labs(y = NULL, x = NULL) +
+      theme_clean() +
+      theme(
+        plot.title.position = "plot",
+        legend.position = 'none',
+        strip.background = element_rect(fill = '#121617'),
+        strip.text = element_text(colour = 'white'), 
+        plot.background = element_blank()
+      )
+  )
+)
+```
 

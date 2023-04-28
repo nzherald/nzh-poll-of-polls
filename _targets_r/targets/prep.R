@@ -1,7 +1,6 @@
 list(
-  tar_target(election_weeks, floor_date(ymd(
-    c("2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14")
-  ), unit = 'week')),
+  tar_target(election_dates, ymd(c("2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14"))),
+  tar_target(election_weeks, floor_date(election_dates, unit = 'week')),
   tar_target(weeks_between_elections, as.integer(diff(election_weeks)) / 7),
   tar_target(
     elections,
@@ -28,14 +27,14 @@ list(
   filter(Party != 'Other') |> 
   mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |> 
   rename(MidDate = MidPoint, ElectionYear = Election) |>
-  count(
+  select(
+    `Date range`,
     Party,
     Pollster,
     MidDate,
     ElectionYear,
     Polled,
-    wt = VotingIntention,
-    name = "VotingIntention"
+    VotingIntention
   ) |>
   filter(ElectionYear %in% year(election_weeks[-1])) |>
   arrange(Party, MidDate) |>
@@ -47,9 +46,8 @@ list(
   ) |>
   mutate(Other = pmax(0, 1 - Polled),
          MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
-  select(-Polled)
-
-  ),
+  select(-Polled, -`Date range`)
+),
   tar_target(
     polls3,
     polls2 |>

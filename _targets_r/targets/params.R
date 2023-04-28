@@ -22,5 +22,17 @@ list(
                filter(n() > 3, .by=Party) |> 
                distinct(Party) |> 
                union(parties_in_parliament2020) |> 
-               arrange(Party))
+               arrange(Party)),
+  tar_target(party_colours,
+             tribble(
+               ~Party, ~Colour,
+               "ACT", "#ffd100",
+               "Green", "#00491E",
+               "Labour", "#d82c20",
+               "Te Pāti Māori", "#D12C38",
+               "National", "#065BAA",
+               "NZ First", "#212529",
+               "TOP", "#09B598",
+               "Other", "#B3B3B3"
+             ) |> mutate(Party = as_factor(Party)))
 )

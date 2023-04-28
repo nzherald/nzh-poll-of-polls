@@ -16,6 +16,7 @@ format:
     theme: sandstone
     mainfont: "Source Sans Pro"
     monofont: "Source Code Pro"
+    linkcolor: "#38A3D7"
     css: styles.css
     toc: true
 
