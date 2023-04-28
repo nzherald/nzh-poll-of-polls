@@ -48,7 +48,8 @@ tar_option_set(packages = c(
   "scales",
   "janitor",
   "ggthemes",
-  "nzelect"
+  "nzelect",
+  "purrr"
 ))
 ```
 
@@ -79,7 +80,7 @@ that minor changes to the page do not trigger a model re-run.
 The code to generate the urls is defined in [R/urls.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/urls.R)
 
 ```{targets urls}
-skip_url_check <- FALSE
+skip_url_check <- TRUE
 list(
   tar_url(polls2011_url, wikipedia_poll_url(2011), cue = tar_cue_skip(skip_url_check)),
   tar_url(polls2014_url, wikipedia_poll_url(2014), cue = tar_cue_skip(skip_url_check)),
@@ -471,18 +472,19 @@ versions will export the data to create more interactive charts.
 
 ```{targets charts}
 list(
-  tar_target(voting_intention_chartdata,
-             model2023_summary_model2023 |>
+  tar_target(
+    voting_intention_chartdata,
+    model2023_summary_model2023 |>
       filter(str_starts(variable, "mu")) |>
       mutate(
         Party = rep(parties_ss, each = sum(weeks_between_elections)),
         week = rep(1:sum(weeks_between_elections), length(parties_ss)),
         week = min(election_weeks) + weeks(week)
       )
-             ),
+  ),
   tar_target(
     voting_intention_chart,
-     voting_intention_chartdata |>
+    voting_intention_chartdata |>
       ggplot(aes(
         x = week,
         y = mean,
@@ -493,11 +495,7 @@ list(
         data = gather(
           polls2,
           Party,
-          VotingIntention,
-          -Pollster,
-          -MidDate,
-          -ElectionYear,
-          -MidDateNumber
+          VotingIntention,-Pollster,-MidDate,-ElectionYear,-MidDateNumber
         ) |>
           filter(VotingIntention != 0),
         aes(x = MidDate, y = VotingIntention),
@@ -509,7 +507,9 @@ list(
         colour = "grey60"
       ) +
       scale_y_continuous(labels = percent) +
-      scale_x_date(breaks = ym(c('2016-01', '2018-01', '2020-01', '2022-01')), date_labels = '%Y') +
+      scale_x_date(breaks = ym(
+        c('2016-01', '2018-01', '2020-01', '2022-01')
+      ), date_labels = '%Y') +
       scale_fill_manual(values = party_colours$Colour, breaks = party_colours$Party) +
       geom_line(
         data = voting_intention_chartdata |> filter(week <= today()),
@@ -522,10 +522,209 @@ list(
         plot.title.position = "plot",
         legend.position = 'none',
         strip.background = element_rect(fill = '#121617'),
-        strip.text = element_text(colour = 'white'), 
+        strip.text = element_text(colour = 'white'),
         plot.background = element_blank()
       )
-  )
+  ),
+  tar_file(voting_intention620, {
+    f <- "output/voting_intention620.svg"
+    ggsave(
+      f,
+      plot = voting_intention_chart +
+        facet_wrap(
+          ~ factor(Party, levels = party_colours$Party),
+          scales = "free",
+          ncol = 2
+        ),
+      dpi = 100,
+      width = 6.2,
+      height = 8
+    )
+    f
+  }),
+  tar_file(voting_intention375, {
+    f <- "output/voting_intention375.svg"
+    ggsave(
+      f,
+      plot = voting_intention_chart +
+        facet_wrap(
+          ~ factor(Party, levels = party_colours$Party),
+          scales = "free",
+          ncol = 1
+        ),
+      dpi = 100,
+      width = 3.75,
+      height = 10
+    )
+    f
+  })
+)
+```
+
+#### Possible coaltion plots
+
+Grab the simulation results for party vote for election night and the current
+week. Currently hard coding the current week - but will need to do something better.
+
+Assumption is hard-coded that parties that currently have an electorate seat will
+keep at least one and no additional parties will pick up an electorate seat. 
+Future work will make this more flexible.
+
+```{targets seats}
+simulate_seats <- function(sims) {
+  t(sapply(1:nrow(sims), function(i) {
+    allocate_seats(
+      votes = as.numeric(sims[i,]),
+      electorate = c(1, 1, 1, 1, 0, 1, 0),
+      parties = names(sims)
+    )$seats_v
+  })) |>
+    as_tibble() |>
+    mutate(
+      NatCoal = ACT + National,
+      LabGreen = Labour + Green,
+      LabGreenMaori = Labour + Green + `Te Pāti Māori`,
+      NatCoalMaori = NatCoal + `Te Pāti Māori`
+    )
+}
+
+list(
+  tar_target(
+    weekly_mu,
+    model2023_mcmc_model2023$draws('mu', format = 'draws_matrix')
+  ),
+  tar_target(
+    sims_election_night,
+    weekly_mu[, 1:8 * 473] |> as_tibble() |> set_names(parties_ss) |>
+      select(all_of(sort(parties_ss))) |>
+      select(-Other) 
+  ),
+  tar_target(
+    sims_saturday,
+    weekly_mu[, 1:8 * 473 - 24] |> as_tibble() |> set_names(parties_ss) |>
+      select(all_of(sort(parties_ss))) |>
+      select(-Other) 
+  ),
+  tar_target(seats_election_night, simulate_seats(sims_election_night)),
+  tar_target(seats_saturday, simulate_seats(sims_saturday))
+)
+```
+
+```{targets coalition-plot}
+coalition_plot <- function(seats) {
+  seats  |>
+    select(National,
+           Labour,
+           NatCoal,
+           LabGreen,
+           LabGreenMaori,
+           NatCoalMaori) |>
+    gather(Coalition, Seats) |>
+    mutate(lab_in = ifelse(grepl("^Lab", Coalition), "Labour-based", "Nationals-based")) |>
+    mutate(
+      Coalition = gsub("^LabGreen", "Labour, Greens", Coalition),
+      Coalition = gsub("^NatCoal", "National, ACT", Coalition),
+      Coalition = gsub("Maori", ",\nTe Pāti Māori", Coalition)
+    ) |>
+    ggplot(aes(x = Seats, fill = lab_in)) +
+    geom_histogram(
+      alpha = 0.5,
+      binwidth = 1,
+      position = "identity",
+      colour = NA
+    )  +
+    scale_y_continuous() +
+    scale_fill_manual(values = c('#d82c20', '#065BAA')) +
+    theme_clean() +
+    theme(
+      legend.position = 'none',
+      strip.background = element_rect(fill = '#121617'),
+      strip.text = element_text(colour = 'white'),
+      plot.background = element_blank()
+    ) +
+    labs(y = NULL) +
+    annotate(
+      'segment',
+      x = 61,
+      xend = 61,
+      y = 0,
+      yend = Inf
+    )
+}
+
+list(
+  tar_target(election_night_plot, coalition_plot(seats_election_night)),
+  tar_target(saturday_plot, coalition_plot(seats_saturday)),
+  tar_file(election_night620, {
+    f <- "output/election_night620.svg"
+    ggsave(
+      f,
+      plot = election_night_plot +
+        facet_wrap(~ factor(
+          Coalition,
+          levels = c(
+            "Labour",
+            "National",
+            "Labour, Greens",
+            "National, ACT",
+            "Labour, Greens,\nTe Pāti Māori",
+            "National, ACT,\nTe Pāti Māori"
+          )
+        ), ncol = 2),
+      dpi = 100,
+      width = 6.2,
+      height = 4
+    )
+    f
+  }),
+  tar_file(election_night375, {
+    f <- "output/election_night375.svg"
+    ggsave(
+      f,
+      plot = election_night_plot +
+        facet_wrap(~ Coalition,
+                   ncol = 1),
+      dpi = 100,
+      width = 3.75,
+      height = 7
+    )
+    f
+  }),
+  tar_file(saturday620, {
+    f <- "output/saturday620.svg"
+    ggsave(
+      f,
+      plot = saturday_plot +
+        facet_wrap(~ factor(
+          Coalition,
+          levels = c(
+            "Labour",
+            "National",
+            "Labour, Greens",
+            "National, ACT",
+            "Labour, Greens,\nTe Pāti Māori",
+            "National, ACT,\nTe Pāti Māori"
+          )
+        ), ncol = 2),
+      dpi = 100,
+      width = 6.2,
+      height = 4
+    )
+    f
+  }),
+  tar_file(saturday375, {
+    f <- "output/saturday375.svg"
+    ggsave(
+      f,
+      plot = saturday_plot +
+        facet_wrap(~ Coalition,
+                   ncol = 1),
+      dpi = 100,
+      width = 3.75,
+      height = 7
+    )
+    f
+  })
 )
 ```
 

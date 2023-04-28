@@ -17,5 +17,6 @@ tar_option_set(packages = c(
   "scales",
   "janitor",
   "ggthemes",
-  "nzelect"
+  "nzelect",
+  "purrr"
 ))

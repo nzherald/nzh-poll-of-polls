@@ -10,3 +10,4 @@ _site
 stan/model2023
 .stan
 stan/model2020
+output/*.svg
