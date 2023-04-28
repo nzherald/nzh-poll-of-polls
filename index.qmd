@@ -18,7 +18,6 @@ Articles that have been published based on the _Poll of Polls_ include:
 - [Friday, 28 April](https://www.nzherald.co.nz/nz/politics/heralds-poll-of-polls-shows-incredibly-tight-election/SUS2IVFEVVHKVLRXWD6EDTWDUU/)
 
 These articles are behind the Herald's premium paywall.
-Good journalism and good data journalism costs money. 
 This site and all the
 source code associated with the model have been released under a 
 [GPL3 license](license.html)
