@@ -22,7 +22,13 @@ jobs:
         with:
           r-version: '4.2.0'
 
-      - name: Install R Dependencies
+      - name: 'Install R deps'
+        uses: r-lib/actions/setup-r-dependencies@v2 
+        with: 
+          extra-packages: any::tidyverse 
+          needs: website 
+
+      - name: Install R Dependencies vis renv
         uses: r-lib/actions/setup-renv@v2
         with:
           cache-version: 1
