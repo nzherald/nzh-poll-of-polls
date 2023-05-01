@@ -28,9 +28,8 @@ jobs:
       - name: Install R Dependencies via renv
         uses: r-lib/actions/setup-renv@v2
         with:
-          cache-version: 2
-        env:
-          RENV_CONFIG_REPOS_OVERRIDE: "https://packagemanager.rstudio.com/all/latest"
+          cache-version: 1
+          profile: buildsite
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
