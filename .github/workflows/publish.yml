@@ -29,6 +29,8 @@ jobs:
         uses: r-lib/actions/setup-renv@v2
         with:
           cache-version: 1
+        env:
+          RENV_CONFIG_REPOS_OVERRIDE: ${{ env.RSPM }}
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
