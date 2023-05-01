@@ -22,13 +22,10 @@ jobs:
         with:
           r-version: '4.2.0'
 
-      - name: 'Install R deps'
-        uses: r-lib/actions/setup-r-dependencies@v2 
-        with: 
-          extra-packages: any::tidyverse 
-          needs: website 
+      - name: 'Install system deps'
+        run: sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
-      - name: Install R Dependencies vis renv
+      - name: Install R Dependencies via renv
         uses: r-lib/actions/setup-renv@v2
         with:
           cache-version: 1
